@@ -25,16 +25,21 @@ int main(void) {
 	   return the results of listing available fonts. */
 	FcFontSet* FontList = FcFontList(NULL, SearchPattern, ObjSet);
 
-	std::vector<FontItem> FontItems;
+	std::vector<FontItem*> FontItems;
+	std::vector<FontItem*> FilteredFontItems;
 	FontItems.clear();
+	FilteredFontItems.clear();
+
+	bool didFilter = false;
+	bool didFilterFind = false;
 
 	for (int i = 0; i < FontList->nfont; ++i) {
 		FcChar8* name = FcPatternFormat(FontList->fonts[i], (const FcChar8*)"%{fullname}");
 		FcChar8* filePath = FcPatternFormat(FontList->fonts[i], (const FcChar8*)"%{file}");
 		if (name && filePath) {
-			FontItem item;
-			item.name = name;
-			item.path = filePath;
+			FontItem* item = new FontItem();
+			item->name = name;
+			item->path = filePath;
 			FontItems.push_back(item);
 		}
 	}
@@ -62,31 +67,43 @@ int main(void) {
 		ImGui::SetNextWindowPos({ 0, PosY + SizeY });
 		ImGui::SetNextWindowSize({ io.DisplaySize.x, io.DisplaySize.y - PosY });
 		if (ImGui::Begin("Main", NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
-			static ImGuiTextFilter filter;
-			filter.Draw("Filter");
-
-			bool ResultFound = false;
-			static ImGuiListClipper clipper;
+			#define Q_BUFF_SIZE 1024
+			static char QBuff[Q_BUFF_SIZE] = { 0 };
+			bool didChange = ImGui::InputTextWithHint("Filter", "(Case Sensitive)", QBuff, Q_BUFF_SIZE);
+			if (QBuff[0] == 0) {
+				didFilter = false;
+			} else if (didChange) {
+				FilteredFontItems.clear();
+				didFilter = true;
+				for (unsigned int i = 0; i < FontItems.size(); ++i) {
+					auto fItem = FontItems[i];
+					if (strstr((const char*)fItem->name, QBuff) != NULL) {
+						FilteredFontItems.push_back(fItem);
+						didFilterFind = true;
+					}
+				}
+				if (FilteredFontItems.size() == 0) {
+					didFilterFind = false;
+				}
+			}
 
 			ImGui::BeginChild("###ListChild");
-				clipper.Begin(FontItems.size());
-				while (clipper.Step()) {
-					for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-						auto fItem = FontItems[i];
-						if (filter.PassFilter((const char*)fItem.name)) {
-							ImGui::TextUnformatted((const char*)fItem.name, NULL);
-							if (ImGui::IsItemHovered()) {
-								ImGui::SetTooltip("%s", fItem.path);
-							}
-							ResultFound = true;
+				auto clipperSize = didFilter ? FilteredFontItems.size() : FontItems.size();
+				if (didFilter && !didFilterFind) {
+					ImGui::TextUnformatted("No Result Found");
+				} else if (clipperSize > 0) {
+					static ImGuiListClipper clipper;
+					clipper.Begin(clipperSize);
+					while (clipper.Step()) {
+						for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+							auto fItem = didFilter ? FilteredFontItems[i] : FontItems[i];
+							ImGui::TextUnformatted((const char*)fItem->name, NULL);
+							if (ImGui::IsItemHovered())
+								ImGui::SetTooltip("%s", fItem->path);
 						}
 					}
-					if (!ResultFound) {
-						ImGui::TextUnformatted("No Result Found");
-						clipper.End();
-						ResultFound = false;
-						break;
-					}
+				} else {
+					ImGui::TextUnformatted("No Font Entry Found");
 				}
 			ImGui::EndChild();
 
@@ -99,10 +116,12 @@ int main(void) {
 	ImBase::Window::Destroy();
 
 	for (auto fItem : FontItems) {
-		FcStrFree(fItem.name);
-		FcStrFree(fItem.path);
+		FcStrFree(fItem->name);
+		FcStrFree(fItem->path);
+		delete fItem;
 	}
 	FontItems.clear();
+	FilteredFontItems.clear();
 
 	FcObjectSetDestroy(ObjSet);
 	FcPatternDestroy(SearchPattern);
