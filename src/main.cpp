@@ -31,7 +31,6 @@ int main(void) {
 	FilteredFontItems.clear();
 
 	bool didFilter = false;
-	bool didFilterFind = false;
 
 	for (int i = 0; i < FontList->nfont; ++i) {
 		FcChar8* name = FcPatternFormat(FontList->fonts[i], (const FcChar8*)"%{fullname}");
@@ -79,17 +78,13 @@ int main(void) {
 					auto fItem = FontItems[i];
 					if (strstr((const char*)fItem->name, QBuff) != NULL) {
 						FilteredFontItems.push_back(fItem);
-						didFilterFind = true;
 					}
-				}
-				if (FilteredFontItems.size() == 0) {
-					didFilterFind = false;
 				}
 			}
 
 			ImGui::BeginChild("###ListChild");
 				auto clipperSize = didFilter ? FilteredFontItems.size() : FontItems.size();
-				if (didFilter && !didFilterFind) {
+				if (didFilter && FilteredFontItems.empty()) {
 					ImGui::TextUnformatted("No Result Found");
 				} else if (clipperSize > 0) {
 					static ImGuiListClipper clipper;
