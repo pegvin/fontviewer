@@ -17,5 +17,5 @@ clean:
 	@$(RM) -r $(BUILD_DIR)
 
 run: all
-	@./build/testapp
+	@./build/FontViewer
 
