@@ -8,28 +8,22 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
 
-    - name: Install CMake & Xorg-dev (Linux)
+    - name: Install CMake, Xorg-dev, FontConfig (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: sudo apt-get update && sudo apt-get install cmake xorg-dev
+      run: sudo apt-get update && sudo apt-get install cmake xorg-dev fontconfig
 
     - name: Install CMake (MacOS)
       if: ${{ matrix.os == 'macos-latest' }}
-      run: brew install cmake
+      run: brew install cmake fontconfig
 
-    - name: Generate Build Files (Windows)
-      if: ${{ matrix.os == 'windows-latest' }}
-      run: |
-        cmake -S . -B build/ -G "Visual Studio 17 2022" -T "ClangCL" -DCMAKE_BUILD_TYPE=Release
-
-    - name: Generate Build Files (Non-Windows)
-      if: ${{ matrix.os != 'windows-latest' }}
+    - name: Generate Build Files
       run: |
         cmake -S . -B build/ -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
 
@@ -43,5 +37,4 @@ jobs:
         name: ${{ matrix.os }}
         path: ./build/
         if-no-files-found: error
-
 
