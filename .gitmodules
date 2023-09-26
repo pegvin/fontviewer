@@ -1,0 +1,3 @@
+[submodule "imbase"]
+	path = imbase
+	url = https://github.com/csprite/imbase
